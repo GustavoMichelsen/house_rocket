@@ -5,15 +5,16 @@ import streamlit as st
 st.set_page_config(layout='wide')
 
 @st.cache(allow_output_mutation=True)
-def import_data(path):
+def import_data(path): # Function for import data
     data = pd.read_csv(path)
     return data
 
-def m2(data):
+def m2(data): # Convert square fit in square meters
     data['m2'] = round(data['sqft_living'] * 0.092903, 2)
     return data
 
 def data_resale(data, df_range, df_renovated, df_basement):
+    # Return data set for resale houses filtered by parameters passed by the user
     price = (data[(data['m2_range'] == df_range) & (data['condition'] >= 4)]['price'].mean()) * 0.7
     data = data[(data['m2_range'] == df_range) & (data['condition'] >= 4) & (data['price'] <= price)]
     if df_renovated == 'sim':
@@ -28,6 +29,7 @@ def data_resale(data, df_range, df_renovated, df_basement):
     return data
 
 def data_renovated(data, df_range, df_renovated, df_basement):
+    # Return data set for renovation houses filtered by parameters passed by the user
     price = (data[(data['m2_range'] == df_range) & (data['condition'] <= 2)]['price'].mean()) * 0.65
     data = data[(data['m2_range'] == df_range) & (data['condition'] <= 2) & (data['price'] <= price)]
     if df_renovated == 'sim':
@@ -41,8 +43,8 @@ def data_renovated(data, df_range, df_renovated, df_basement):
     data = data[(data['condition'] <= 2)].sort_values('price').reset_index()
     return data
 
-
-def recommendation(data, data2=False, r_range=1):
+def recommendation(data, data2=False, r_range=1): # Function for recommendation the best houses
+    
     if isinstance(data2, bool):
         mean_price = data['price'].mean()
         data = data.head(5)
@@ -56,7 +58,7 @@ def recommendation(data, data2=False, r_range=1):
         data['profit'] = round(data['target'] - data['price'] - data['budget'], 2)
     return data
 
-def mapa(data):
+def mapa(data): # Plot map
     mapa = px.scatter_mapbox(data,
                              lat='lat',
                              lon='long',
@@ -68,7 +70,7 @@ def mapa(data):
     mapa.update_layout(margin={'r': 0, 't': 0, 'l': 0, 'b': 0}, coloraxis_showscale=False)
     return mapa
 
-def head():
+def head(): # Page title
     st.title('House Rocket - An Imaginary Company')
     return None
 
@@ -76,23 +78,28 @@ def resale_houses(data):
     st.header('Casas para revenda')
 
     with st.expander("Clique para ver as Casas para Revenda."):
-        col1, col2, col3 = st.columns([3, 1, 1])
-        with col1:
-            r_range = st.slider('Selecione o tamanho da casa',
+        col1, col2, col3 = st.columns([3, 1, 1]) # Dimensions the area used by each columm
+        with col1: 
+            # Find the min and max price of houses for resales and scales the range.
+            r_range = st.slider('Selecione o tamanho da casa', 
                                 int(data[data['condition'] >= 4]['m2_range'].min()),
                                 int(data[data['condition'] >= 4]['m2_range'].max()),
                                 3)
             st.text('Tamanho da casa de {} a {} metros quadrados.'.format(r_range * 50, (r_range * 50) + 50))
         with col2:
+            # Radio button selects houses with basement
             r_basement = st.radio('Casas com porão', ['todos', 'sim', 'não'], horizontal=True)
         with col3:
+            # Radio button selects renovated houses
             r_renovated = st.radio('Casas que foram reformadas', ['todos', 'sim', 'não'], horizontal=True)
 
+        # Call data_resale function for filter data set by the parameters passed by users
         df_resale = data_resale(data, r_range, r_renovated, r_basement)
 
+        # Resize columns
         col1, col2 = st.columns([1.1, 1.7])
 
-        with col1:
+        with col1: # Data set plot
             st.subheader('Top 5 casas para revenda')
             df_head = recommendation(df_resale)
             st.dataframe(
@@ -107,30 +114,35 @@ def resale_houses(data):
             fig = mapa(df_head)
         else:
             fig = mapa(df_resale)
-        with col2:
+        with col2: # Map plot
             st.plotly_chart(fig)
     return None
 
 def renovation_houses(data):
     st.header('Casas para Reforma e Venda')
     with st.expander("Clique para ver as Casas para Reforma e Venda."):
-        col1, col2, col3 = st.columns([3, 1, 1])
+        col1, col2, col3 = st.columns([3, 1, 1]) # Dimensions the area used by each columm
         with col1:
+            # Find the min and max price of houses for resales and scales the range.
             ren_range = st.slider('Selecione o tamanho da casa',
                                   int(data[data['condition'] <= 2]['m2_range'].min()),
                                   int(data[data['condition'] <= 2]['m2_range'].max()),
                                   3)
             st.text('Tamanho da casa de {} a {} metros quadrados.'.format(ren_range * 50, (ren_range * 50) + 50))
         with col2:
+            # Radio button selects houses with basement
             ren_basement = st.radio('Casas com porão.', ['todos', 'sim', 'não'], horizontal=True)
         with col3:
+            # Radio button selects renovated houses
             ren_renovated = st.radio('Casas que foram reformadas.', ['todos', 'sim', 'não'], horizontal=True)
 
+        # Call data_resale function for filter data set by the parameters passed by users
         df_renovated = data_renovated(data, ren_range, ren_renovated, ren_basement)
 
-        col1, col2 = st.columns([1.1, 1.7])
+        # Resize columns
+        col1, col2 = st.columns([1.1, 1.7]) 
 
-        with col1:
+        with col1: # Data set plot
             st.subheader('Top 5 casas para Reforma.')
             df_head_renovated = recommendation(df_renovated, data, ren_range)
             st.dataframe(
@@ -147,7 +159,7 @@ def renovation_houses(data):
             fig = mapa(df_head_renovated)
         else:
             fig = mapa(df_renovated)
-        with col2:
+        with col2: # Map plot
             st.plotly_chart(fig)
     return None
 
